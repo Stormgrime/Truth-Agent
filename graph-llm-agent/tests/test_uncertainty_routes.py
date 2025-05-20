@@ -2,9 +2,9 @@ import pytest
 import asyncio
 from typing import Tuple, Optional
 
-from src.uncertainty import UncertaintyArbiter
-from src.llm_client import LLMClient # For mocking
-from src.config import settings # To potentially override thresholds for testing
+from graph_llm_agent.uncertainty import UncertaintyArbiter
+from graph_llm_agent.llm_client import LLMClient # For mocking
+from graph_llm_agent.config import settings # To potentially override thresholds for testing
 
 # --- Mock LLMClient ---
 class MockLLMClientUncertainty(LLMClient):

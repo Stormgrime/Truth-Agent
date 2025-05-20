@@ -6,7 +6,7 @@ import requests # For synchronous HTTP requests to vLLM
 import torch
 from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
 
-from src.config import settings
+from graph_llm_agent.config import settings
 
 logger = logging.getLogger(__name__)
 

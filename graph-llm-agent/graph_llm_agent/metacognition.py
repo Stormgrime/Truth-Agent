@@ -5,11 +5,11 @@ from typing import List, Dict, Any, Optional, Tuple
 from uuid import UUID, uuid4
 import asyncio # For async operations
 
-from src.config import settings
-from src.llm_client import LLMClient
-from src.neo4j_adapter import Neo4jAdapter
-from src.embedding_client import EmbeddingClient # For embedding extracted facts
-from src.memory_schema import MetaMemory, SemanticMemory, NodeLabel, RelationshipType # Pydantic models
+from graph_llm_agent.config import settings
+from graph_llm_agent.llm_client import LLMClient
+from graph_llm_agent.neo4j_adapter import Neo4jAdapter
+from graph_llm_agent.embedding_client import EmbeddingClient # For embedding extracted facts
+from graph_llm_agent.memory_schema import MetaMemory, SemanticMemory, NodeLabel, RelationshipType # Pydantic models
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     # Imports moved inside main_test or here for clarity if needed by mocks
     import re 
     from uuid import UUID, uuid4 # Ensure these are available for the test code
-    from src.memory_schema import Episode # For mock episode data creation
+    from graph_llm_agent.memory_schema import Episode # For mock episode data creation
 
     class MockLLMClient(LLMClient):
         def __init__(self): self.mode = "mock"; logger.info("MockLLMClient for Metacognition")

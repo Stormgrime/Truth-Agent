@@ -2,8 +2,8 @@ import logging
 from typing import Tuple, Optional, List, Dict, Any
 import math # For isnan checks if needed
 
-from src.config import settings
-from src.llm_client import LLMClient
+from graph_llm_agent.config import settings
+from graph_llm_agent.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,8 @@ class UncertaintyArbiter:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
+    # For direct execution, ensure LLMClient can be imported or is defined locally for the mock
+    from graph_llm_agent.llm_client import LLMClient 
 
     class MockLLMClient(LLMClient):
         def __init__(self):

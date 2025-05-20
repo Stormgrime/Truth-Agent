@@ -6,8 +6,8 @@ from neo4j import GraphDatabase, Driver, ManagedTransaction, Record, Result
 from neo4j.exceptions import Neo4jError, ServiceUnavailable, ConstraintError
 from datetime import datetime # Ensure datetime is imported
 
-from src.config import settings
-from src.memory_schema import NodeLabel, RelationshipType, Episode # Import specific models if needed for type hinting
+from graph_llm_agent.config import settings
+from graph_llm_agent.memory_schema import NodeLabel, RelationshipType, Episode # Import specific models if needed for type hinting
 
 logger = logging.getLogger(__name__)
 

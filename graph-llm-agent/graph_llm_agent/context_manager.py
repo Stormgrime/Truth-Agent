@@ -4,9 +4,9 @@ from collections import deque
 from typing import List, Dict, Any, Optional, Tuple
 from uuid import UUID
 
-from src.config import settings
-# from src.compaction import CompactionService # Will be implemented next
-# from src.llm_client import LLMClient # For tokenizer, if not using tiktoken directly
+from graph_llm_agent.config import settings
+# from graph_llm_agent.compaction import CompactionService # Will be implemented next
+# from graph_llm_agent.llm_client import LLMClient # For tokenizer, if not using tiktoken directly
 
 logger = logging.getLogger(__name__)
 
@@ -36,23 +36,30 @@ class ContextManager:
         self.compaction_service = compaction_service if compaction_service else PlaceholderCompactionService()
         
         try:
-            # Using cl100k_base as it's common for gpt-3.5/4. Adjust if Qwen needs a specific one.
-            self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        except Exception as e:
-            logger.warning(f"Failed to load tiktoken encoding 'cl100k_base', falling back to 'p50k_base'. Error: {e}")
+            # Try to get encoding for the specific model first
+            self.tokenizer = tiktoken.encoding_for_model(settings.LLM_MODEL_NAME)
+            logger.info(f"ContextManager: Using tokenizer '{self.tokenizer.name}' based on LLM_MODEL_NAME '{settings.LLM_MODEL_NAME}'.")
+        except KeyError:
+            logger.warning(f"ContextManager: No specific tiktoken encoding found for model '{settings.LLM_MODEL_NAME}'. Falling back.")
             try:
-                self.tokenizer = tiktoken.get_encoding("p50k_base") # Older models
-            except Exception as e_fallback:
-                logger.error(f"Failed to load any tiktoken encoding: {e_fallback}", exc_info=True)
-                raise RuntimeError("Could not initialize tiktoken tokenizer for ContextManager.") from e_fallback
+                self.tokenizer = tiktoken.get_encoding("cl100k_base")
+                logger.info("ContextManager: Using 'cl100k_base' tokenizer as fallback.")
+            except Exception as e_cl100k:
+                logger.warning(f"ContextManager: Failed to load 'cl100k_base', falling back to 'p50k_base'. Error: {e_cl100k}")
+                try:
+                    self.tokenizer = tiktoken.get_encoding("p50k_base")
+                    logger.info("ContextManager: Using 'p50k_base' tokenizer as further fallback.")
+                except Exception as e_p50k:
+                    logger.error(f"ContextManager: Failed to load any tiktoken encoding: {e_p50k}", exc_info=True)
+                    raise RuntimeError("Could not initialize tiktoken tokenizer for ContextManager.") from e_p50k
         
-        logger.info(f"ContextManager initialized with tokenizer: {self.tokenizer.name}")
+        # logger.info(f"ContextManager initialized with tokenizer: {self.tokenizer.name}") # Covered by specific logs above
 
     def _count_tokens(self, text: str) -> int:
         if not text: return 0
         return len(self.tokenizer.encode(text))
 
-    def add_interaction(self, role: str, content: str, episode_uuid: UUID):
+    async def add_interaction(self, role: str, content: str, episode_uuid: UUID):
         token_count = self._count_tokens(content)
         interaction = {
             "role": role,
@@ -67,7 +74,7 @@ class ContextManager:
         # Asynchronously check and trigger compaction if needed
         # For now, making it synchronous for simplicity in this step.
         # If this were async: asyncio.create_task(self.check_and_trigger_compaction())
-        self.check_and_trigger_compaction()
+        await self.check_and_trigger_compaction()
 
 
     def get_oldest_slice_for_compaction(self, num_tokens_to_remove: int) -> List[Dict[str, Any]]:
@@ -115,7 +122,7 @@ class ContextManager:
         logger.info(f"Added compaction summary to context: tokens={summary_token_count}, total_tokens={self.current_total_tokens}")
 
 
-    def check_and_trigger_compaction(self):
+    async def check_and_trigger_compaction(self):
         if self.current_total_tokens > settings.COMPACTION_TRIGGER_TOKENS:
             logger.info(f"Total tokens {self.current_total_tokens} exceeded trigger {settings.COMPACTION_TRIGGER_TOKENS}. Initiating compaction.")
             
@@ -138,7 +145,8 @@ class ContextManager:
                 # from a sync method like this, one would need asyncio.run() or similar,
                 # but check_and_trigger_compaction itself would ideally be async.
                 # For this step, direct call is fine as placeholder is simple.
-                summary_text, summary_token_count, summary_uuid = self.compaction_service.compact_messages_and_get_summary_text(messages_to_compact)
+                # summary_text, summary_token_count, summary_uuid = self.compaction_service.compact_messages_and_get_summary_text(messages_to_compact)
+                summary_text, summary_token_count, summary_uuid = await self.compaction_service.compact_and_store_memory(messages_to_compact)
                 # summary_uuid would be None from placeholder's compact_and_store_memory if we called that.
                 # Let's align with the async nature for future, but call the sync part of placeholder for now.
                 # summary_text, summary_token_count, summary_uuid = asyncio.run(self.compaction_service.compact_and_store_memory(messages_to_compact)) # This would be for a real async service
@@ -235,12 +243,14 @@ if __name__ == "__main__":
     mock_compaction_service = PlaceholderCompactionService()
     
     manager = ContextManager(compaction_service=mock_compaction_service)
-
-    # Test adding interactions
-    manager.add_interaction("user", "Hello, this is my first message.", uuid4())
-    manager.add_interaction("assistant", "Hi there! Nice to meet you.", uuid4())
-    manager.add_interaction("user", "I want to talk about LLMs.", uuid4())
+    async def run_add_interaction_test():
+        # Test adding interactions
+        await manager.add_interaction("user", "Hello, this is my first message.", uuid4())
+        await manager.add_interaction("assistant", "Hi there! Nice to meet you.", uuid4())
+        await manager.add_interaction("user", "I want to talk about LLMs.", uuid4())
     
+    asyncio.run(run_add_interaction_test()) # Encapsulate async calls for test block
+
     logger.info(f"Current context window items: {len(manager.context_window)}")
     logger.info(f"Current total tokens: {manager.current_total_tokens}")
 
@@ -266,12 +276,18 @@ if __name__ == "__main__":
     settings.COMPACTION_OLDEST_TOKENS = 20 # Compact oldest 20 tokens when going over 50
 
     # Add more interactions to exceed trigger tokens
-    for i in range(10):
-        manager.add_interaction("user", f"This is user message number {i+4}. It adds some more tokens to our growing conversation history.", uuid4())
-        manager.add_interaction("assistant", f"This is assistant response {i+4}. I am also adding tokens.", uuid4())
-        if manager.current_total_tokens < settings.COMPACTION_TRIGGER_TOKENS and len(manager.context_window) > 5 : # check if compaction happened by summary being added
-            # if a summary was added, it means compaction occurred
-            # This check is a bit indirect for a placeholder.
+    async def run_compaction_trigger_test():
+        for i in range(10):
+            await manager.add_interaction("user", f"This is user message number {i+4}. It adds some more tokens to our growing conversation history.", uuid4())
+            await manager.add_interaction("assistant", f"This is assistant response {i+4}. I am also adding tokens.", uuid4())
+            if manager.current_total_tokens < settings.COMPACTION_TRIGGER_TOKENS and len(manager.context_window) > 5 : # check if compaction happened by summary being added
+                # if a summary was added, it means compaction occurred
+                # This check is a bit indirect for a placeholder.
+                pass # Pass for now, actual check is below
+    
+    asyncio.run(run_compaction_trigger_test()) # Encapsulate async calls
+
+    logger.info(f"After many interactions: Context items: {len(manager.context_window)}, Total tokens: {manager.current_total_tokens}")
             # A real check would be if compaction_service.compact_and_store_memory was called.
             pass
 

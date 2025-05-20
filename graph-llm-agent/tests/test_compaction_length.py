@@ -4,12 +4,12 @@ import tiktoken # For token counting in test
 from typing import List, Dict, Any, Optional, Tuple
 from uuid import UUID, uuid4
 
-from src.compaction import CompactionService
-from src.llm_client import LLMClient # For mocking
-from src.neo4j_adapter import Neo4jAdapter # For mocking
-from src.embedding_client import EmbeddingClient # For mocking
-from src.config import settings 
-from src.memory_schema import NodeLabel # For mock data
+from graph_llm_agent.compaction import CompactionService
+from graph_llm_agent.llm_client import LLMClient # For mocking
+from graph_llm_agent.neo4j_adapter import Neo4jAdapter # For mocking
+from graph_llm_agent.embedding_client import EmbeddingClient # For mocking
+from graph_llm_agent.config import settings 
+from graph_llm_agent.memory_schema import NodeLabel # For mock data
 
 # --- Mocks ---
 class MockLLMClientCompaction(LLMClient):

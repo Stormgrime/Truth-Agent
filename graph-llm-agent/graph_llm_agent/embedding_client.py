@@ -3,7 +3,7 @@ from sentence_transformers import SentenceTransformer
 import torch
 import logging
 
-from src.config import settings
+from graph_llm_agent.config import settings
 
 logger = logging.getLogger(__name__)
 

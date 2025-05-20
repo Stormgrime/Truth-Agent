@@ -9,16 +9,16 @@ from rich.prompt import Prompt
 from rich.text import Text
 from rich.panel import Panel
 
-from src.config import settings
-from src.embedding_client import EmbeddingClient
-from src.llm_client import LLMClient
-from src.neo4j_adapter import Neo4jAdapter
-from src.retrieval import RetrievalService
-from src.context_manager import ContextManager
-from src.compaction import CompactionService
-from src.metacognition import MetacognitionService
-from src.uncertainty import UncertaintyArbiter
-from src.agent_memory import AgentMemory
+from graph_llm_agent.config import settings
+from graph_llm_agent.embedding_client import EmbeddingClient
+from graph_llm_agent.llm_client import LLMClient
+from graph_llm_agent.neo4j_adapter import Neo4jAdapter
+from graph_llm_agent.retrieval import RetrievalService
+from graph_llm_agent.context_manager import ContextManager
+from graph_llm_agent.compaction import CompactionService
+from graph_llm_agent.metacognition import MetacognitionService
+from graph_llm_agent.uncertainty import UncertaintyArbiter
+from graph_llm_agent.agent_memory import AgentMemory
 
 logging.basicConfig(level=settings.LOG_LEVEL.upper(), format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -41,16 +41,21 @@ def initialize_services(model_override: Optional[str] = None, llm_api_base_url_o
     global compaction_service, context_manager, metacognition_service
     global uncertainty_arbiter, agent_memory
 
+    # Corrected order:
     logger.info("Initializing services...")
     try:
-        neo4j_adapter = Neo4jAdapter()
-        neo4j_adapter.ensure_schema()
-
+        # 1. Initialize EmbeddingClient first to set/confirm EMBEDDING_DIMENSIONS
         embedding_client = EmbeddingClient()
         
+        # 2. Initialize Neo4jAdapter
+        neo4j_adapter = Neo4jAdapter() # Now it can use the potentially updated settings.EMBEDDING_DIMENSIONS
+        
+        # 3. Ensure schema (which creates vector indexes using the dimension)
+        neo4j_adapter.ensure_schema() 
+
+        # Initialize other services that depend on the above
         current_llm_model = model_override if model_override else settings.LLM_MODEL_NAME
         current_llm_api_base = llm_api_base_url_override if llm_api_base_url_override else settings.LLM_API_BASE_URL
-        
         llm_client = LLMClient(model_name=current_llm_model, llm_api_base_url=current_llm_api_base)
         
         retrieval_service = RetrievalService(neo4j_adapter, embedding_client)

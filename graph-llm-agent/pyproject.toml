@@ -5,7 +5,7 @@ description = "A Large Language Model agent with persistent, graph-based memory.
 authors = ["Jules <jules@example.com>"] # Placeholder author
 readme = "README.md"
 license = "Apache-2.0" # Assuming Apache-2.0 as Qwen-3 is, and many components are. Verify if this is appropriate.
-packages = [{include = "src"}]
+packages = [{include = "graph_llm_agent"}]
 
 [tool.poetry.dependencies]
 python = "~3.10"

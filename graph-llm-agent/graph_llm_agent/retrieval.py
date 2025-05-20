@@ -4,10 +4,10 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from uuid import UUID
 
-from src.config import settings
-from src.neo4j_adapter import Neo4jAdapter
-from src.embedding_client import EmbeddingClient
-from src.memory_schema import NodeLabel # To construct index names
+from graph_llm_agent.config import settings
+from graph_llm_agent.neo4j_adapter import Neo4jAdapter
+from graph_llm_agent.embedding_client import EmbeddingClient
+from graph_llm_agent.memory_schema import NodeLabel # To construct index names
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +136,13 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     
     # Mocking dependencies for testing
+    # We need to import these here if they are not available globally for the test block
+    # For example, if running `python graph_llm_agent/retrieval.py` directly
+    from graph_llm_agent.neo4j_adapter import Neo4jAdapter
+    from graph_llm_agent.embedding_client import EmbeddingClient
+    from graph_llm_agent.memory_schema import NodeLabel # Assuming this is used by mocks
+    from graph_llm_agent.config import settings # For test overrides
+
     class MockNeo4jAdapter(Neo4jAdapter):
         def __init__(self):
             self._driver = True # Mock connected state

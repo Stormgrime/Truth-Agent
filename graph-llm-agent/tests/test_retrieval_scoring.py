@@ -6,11 +6,11 @@ from datetime import datetime, timezone, timedelta
 
 # Ensure src modules can be imported. If running pytest from root, this might need adjustments
 # to sys.path or using `python -m pytest`. For now, assuming direct import works.
-from src.retrieval import RetrievalService
-from src.neo4j_adapter import Neo4jAdapter # For mocking
-from src.embedding_client import EmbeddingClient # For mocking
-from src.config import settings
-from src.memory_schema import NodeLabel # For mock data
+from graph_llm_agent.retrieval import RetrievalService
+from graph_llm_agent.neo4j_adapter import Neo4jAdapter # For mocking
+from graph_llm_agent.embedding_client import EmbeddingClient # For mocking
+from graph_llm_agent.config import settings
+from graph_llm_agent.memory_schema import NodeLabel # For mock data
 
 # --- Mocks ---
 class MockNeo4jAdapter(Neo4jAdapter):

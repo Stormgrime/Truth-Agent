@@ -3,11 +3,11 @@ import tiktoken # For token counting of summaries
 from typing import List, Dict, Any, Tuple, Optional
 from uuid import UUID, uuid4
 
-from src.config import settings
-from src.llm_client import LLMClient
-from src.neo4j_adapter import Neo4jAdapter
-from src.memory_schema import CompactionNode, NodeLabel # Pydantic model and labels
-from src.embedding_client import EmbeddingClient # Import for type hinting or direct use
+from graph_llm_agent.config import settings
+from graph_llm_agent.llm_client import LLMClient
+from graph_llm_agent.neo4j_adapter import Neo4jAdapter
+from graph_llm_agent.memory_schema import CompactionNode, NodeLabel # Pydantic model and labels
+from graph_llm_agent.embedding_client import EmbeddingClient # Import for type hinting or direct use
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +18,22 @@ class CompactionService:
         self.embedding_client = embedding_client # Store embedding client
 
         try:
-            self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        except Exception as e:
-            logger.warning(f"Failed to load tiktoken encoding 'cl100k_base', falling back to 'p50k_base'. Error: {e}")
+            self.tokenizer = tiktoken.encoding_for_model(settings.LLM_MODEL_NAME)
+            logger.info(f"CompactionService: Using tokenizer '{self.tokenizer.name}' based on LLM_MODEL_NAME '{settings.LLM_MODEL_NAME}'.")
+        except KeyError:
+            logger.warning(f"CompactionService: No specific tiktoken encoding found for model '{settings.LLM_MODEL_NAME}'. Falling back.")
             try:
-                self.tokenizer = tiktoken.get_encoding("p50k_base")
-            except Exception as e_fallback:
-                logger.error(f"Failed to load any tiktoken encoding for CompactionService: {e_fallback}", exc_info=True)
-                raise RuntimeError("Could not initialize tiktoken tokenizer for CompactionService.") from e_fallback
-        logger.info(f"CompactionService initialized with tokenizer: {self.tokenizer.name}")
+                self.tokenizer = tiktoken.get_encoding("cl100k_base")
+                logger.info("CompactionService: Using 'cl100k_base' tokenizer as fallback.")
+            except Exception as e_cl100k:
+                logger.warning(f"CompactionService: Failed to load 'cl100k_base', falling back to 'p50k_base'. Error: {e_cl100k}")
+                try:
+                    self.tokenizer = tiktoken.get_encoding("p50k_base")
+                    logger.info("CompactionService: Using 'p50k_base' tokenizer as further fallback.")
+                except Exception as e_p50k:
+                    logger.error(f"CompactionService: Failed to load any tiktoken encoding: {e_p50k}", exc_info=True)
+                    raise RuntimeError("Could not initialize tiktoken tokenizer for CompactionService.") from e_p50k
+        # logger.info(f"CompactionService initialized with tokenizer: {self.tokenizer.name}") # Covered by specific logs
 
     def _count_tokens(self, text: str) -> int:
         if not text: return 0

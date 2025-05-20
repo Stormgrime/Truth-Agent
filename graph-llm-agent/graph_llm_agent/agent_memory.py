@@ -3,14 +3,14 @@ from typing import List, Dict, Any, Optional
 from uuid import UUID, uuid4
 import asyncio # For async operations if sub-services are async
 
-from src.config import settings
-from src.neo4j_adapter import Neo4jAdapter
-from src.embedding_client import EmbeddingClient
-from src.retrieval import RetrievalService
-from src.context_manager import ContextManager
-# from src.metacognition import MetacognitionService # To be implemented next
-from src.memory_schema import Episode, NodeLabel, RelationshipType
-from src.llm_client import LLMClient # For MetacognitionService placeholder
+from graph_llm_agent.config import settings
+from graph_llm_agent.neo4j_adapter import Neo4jAdapter
+from graph_llm_agent.embedding_client import EmbeddingClient
+from graph_llm_agent.retrieval import RetrievalService
+from graph_llm_agent.context_manager import ContextManager
+# from graph_llm_agent.metacognition import MetacognitionService # To be implemented next
+from graph_llm_agent.memory_schema import Episode, NodeLabel, RelationshipType
+from graph_llm_agent.llm_client import LLMClient # For MetacognitionService placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class AgentMemory:
             except Exception as e:
                 logger.error(f"Failed to link episodes {previous_episode_uuid} to {episode_uuid}: {e}", exc_info=True)
 
-        self.context_manager.add_interaction(speaker, content, episode_uuid)
+        await self.context_manager.add_interaction(speaker, content, episode_uuid)
         
         self.interaction_count_since_last_reflection += 1
         if self.interaction_count_since_last_reflection >= settings.REFLECTION_INTERACTION_INTERVAL:
