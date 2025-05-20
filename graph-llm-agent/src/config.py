@@ -28,8 +28,8 @@ class Settings(BaseSettings):
     LLM_API_KEY: Optional[str] = None # API key if LLM is served behind an authenticated endpoint
 
     # Embedding Model Configuration
-    EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
-    EMBEDDING_DIMENSIONS: Optional[int] = None # Auto-detected later, but can be overridden. For all-MiniLM-L6-v2 it's 384. For Qwen-embed-large it's 1024.
+    EMBEDDING_MODEL_NAME: str = "intfloat/e5-large-v2" # Default embedding model
+    EMBEDDING_DIMENSIONS: Optional[int] = 1024 # Default to 1024 for e5-large-v2. Change if model changes.
 
     # Application Settings
     LOG_LEVEL: str = "INFO"

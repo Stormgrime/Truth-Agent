@@ -1,0 +1,78 @@
+name: Python CI
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"] # As per project requirement
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: "1.7.1" # Or a more recent stable version if desired
+        virtualenvs-create: true
+        virtualenvs-in-project: true # Recommended for CI caching if used
+
+    - name: Load cached venv if available
+      id: cached-poetry-dependencies
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          venv-${{ runner.os }}-${{ matrix.python-version }}-
+
+    - name: Install dependencies (if cache not found or outdated)
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root --without dev # Install only main deps for some checks
+      # Or, if dev dependencies are needed for pytest plugins not in main:
+      # run: poetry install --no-interaction --no-root
+
+    # Re-run install with dev for testing tools like pytest, pytest-cov, etc.
+    # This ensures dev dependencies are present for the test run.
+    # It's a bit redundant but ensures all tools are available.
+    # A more optimized approach might involve caching dev dependencies separately or installing all at once.
+    - name: Install all dependencies including dev
+      run: poetry install --no-interaction
+
+    - name: Run Pytest tests
+      run: |
+        poetry run pytest -q tests/
+
+    - name: Run Smoke Test
+      env:
+        # NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD will need to be set if smoke test requires live DB
+        # For now, assuming smoke test might run with mocks or skip DB-dependent parts if env vars not set
+        # Alternatively, set up a service container for Neo4j for CI.
+        # For CPU-only CI, LLM model loading might be slow or require specific (small) models.
+        # The smoke test should be designed to handle this, e.g. by using a very small default model
+        # or by having the LLMClient mock itself if certain environment flags are set.
+        # For now, we run it and see. It might fail if it tries to download large models or connect to DB.
+        PYTHONPATH: . # Ensure src can be found by 'python -m src.main'
+        # Example of how to use a very small model for CI smoke test if needed:
+        # LLM_MODEL_NAME: "hf-internal-testing/tiny-random-gpt2" 
+        # EMBEDDING_MODEL_NAME: "hf-internal-testing/tiny-random-bert"
+      run: |
+        poetry run python -m src.main smoke --model "hf-internal-testing/tiny-random-gpt2"
+        # The smoke test in main.py uses settings.LLM_MODEL_NAME by default for its LLMClient.
+        # We override it here for CI to use a tiny model that doesn't require much download/RAM.
+        # Ensure LLMClient and EmbeddingClient can handle such overrides or are mocked in CI mode.
+        # The --model flag in main.py smoke command now allows this override.
+
+    # Optional: Linting and formatting checks
+    # - name: Run Ruff Linter
+    #   run: poetry run ruff check src tests
+    # - name: Run Black Formatter Check
+    #   run: poetry run black --check src tests

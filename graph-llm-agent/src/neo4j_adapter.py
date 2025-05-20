@@ -172,14 +172,39 @@ class Neo4jAdapter:
             logger.error(f"Failed to add relationship {rel_type} from {start_node_uuid} to {end_node_uuid}: {e}")
             raise
 
-    def query_vector_nodes(self, index_name: str, knn_embedding: List[float], k_value: int) -> List[Tuple[UUID, float]]:
+    def query_vector_nodes(self, index_name: str, knn_embedding: List[float], k_value: int) -> List[Dict[str, Any]]:
+        # Retrieve common properties useful for retrieval scoring and context assembly
         query = (
             f"CALL db.index.vector.queryNodes($index_name, $k, $embedding) "
-            f"YIELD node, score RETURN node.uuid AS uuid, score"
+            f"YIELD node, score "
+            f"RETURN "
+            f"  node.uuid AS uuid, "
+            f"  CASE WHEN node.content IS NOT NULL THEN node.content ELSE null END AS content, "
+            f"  CASE WHEN node.speaker IS NOT NULL THEN node.speaker ELSE null END AS speaker, "
+            f"  node.timestamp AS timestamp, " # Assume timestamp is always there for indexed nodes
+            f"  CASE WHEN node.importance IS NOT NULL THEN node.importance ELSE 0.5 END AS importance, " # Default importance
+            f"  labels(node) AS labels, "
+            f"  score"
         )
+        
         def _tx_query_vector(tx: ManagedTransaction, q: str, idx_name: str, k_val: int, emb: List[float]):
             result = tx.run(q, index_name=idx_name, k=k_val, embedding=emb)
-            return [(UUID(record["uuid"]), float(record["score"])) for record in result]
+            # Convert records to dictionaries, handling potential missing fields gracefully
+            # and ensuring correct types (e.g., UUID, datetime if not auto-converted by driver)
+            processed_results = []
+            for record in result:
+                props = dict(record) # Convert record to dict
+                if props.get("uuid"):
+                    props["uuid"] = UUID(props["uuid"])
+                # Neo4j driver typically converts compatible temporal types to datetime.datetime objects.
+                # If stored as ISO string and not auto-converted, parsing would be needed:
+                # if props.get("timestamp") and isinstance(props.get("timestamp"), str):
+                #    props["timestamp"] = datetime.fromisoformat(props["timestamp"])
+                props["score"] = float(props["score"])
+                # Importance should already be float or default 0.5
+                processed_results.append(props)
+            return processed_results
+
         return self._execute_read_transaction(_tx_query_vector, q=query, idx_name=index_name, k_val=k_value, emb=knn_embedding)
 
     def mark_superseded_by(self, old_node_uuid: UUID, new_node_uuid: UUID,
@@ -270,8 +295,15 @@ if __name__ == "__main__":
                 )
                 logger.info(f"Vector query results (first result if any): {vector_results[:1]}")
                 if vector_results:
-                     assert isinstance(vector_results[0][0], UUID)
-                     assert isinstance(vector_results[0][1], float)
+                    # Check the structure of the first result
+                    first_res = vector_results[0]
+                    assert isinstance(first_res, dict)
+                    assert "uuid" in first_res and isinstance(first_res["uuid"], UUID)
+                    assert "score" in first_res and isinstance(first_res["score"], float)
+                    assert "labels" in first_res and isinstance(first_res["labels"], list)
+                    # Check if content is present (it might be None for some node types)
+                    assert "content" in first_res 
+                    logger.info(f"First vector result content: {first_res.get('content')}")
             except Exception as e:
                 logger.error(f"Vector query test failed: {e}.")
         else:

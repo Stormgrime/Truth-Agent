@@ -21,6 +21,7 @@ class Episode(BaseNode):
 class SemanticMemory(BaseNode):
     statement: str # The factual statement
     source_episode_uuids: List[UUID] = Field(default_factory=list) # UUIDs of Episodes it was derived from
+    source_reflection_uuid: Optional[UUID] = None # UUID of the MetaMemory reflection it was derived from
     # Example: "Alice works at Acme Corp"
     # We can add more structured fields like subject, predicate, object if needed later
 
@@ -28,7 +29,8 @@ class MetaMemory(BaseNode):
     # For reflections, summaries of multiple episodes, or critiques
     summary_text: str
     covered_episode_uuids: List[UUID] = Field(default_factory=list) # Episodes this meta memory covers/summarizes
-    reflection_type: str # e.g., "daily_summary", "interaction_summary", "self_critique"
+    reflection_type: Optional[str] = None # e.g., "daily_summary", "interaction_summary", "self_critique"
+    salience_score: Optional[float] = Field(default=0.5, ge=0.0, le=1.0)
 
 class CompactionNode(BaseNode):
     # Stores the summary of a compacted part of the context window
@@ -83,14 +85,16 @@ if __name__ == "__main__":
     fact = SemanticMemory(
         statement="The sky is blue.",
         source_episode_uuids=[user_episode.uuid, agent_response.uuid],
-        importance=0.8
+        importance=0.8,
+        source_reflection_uuid=None # Example, could be a real UUID if generated from a reflection
     )
     print("\nSemantic Memory:", fact.model_dump_json(indent=2))
 
     reflection = MetaMemory(
         summary_text="User and agent exchanged greetings. Agent offered help.",
         covered_episode_uuids=[user_episode.uuid, agent_response.uuid],
-        reflection_type="interaction_summary"
+        reflection_type="interaction_summary",
+        salience_score=0.75
     )
     print("\nMeta Memory:", reflection.model_dump_json(indent=2))
 
