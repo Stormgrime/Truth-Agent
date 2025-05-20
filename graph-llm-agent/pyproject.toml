@@ -1,0 +1,60 @@
+[tool.poetry]
+name = "graph-llm-agent"
+version = "0.1.0"
+description = "A Large Language Model agent with persistent, graph-based memory."
+authors = ["Jules <jules@example.com>"] # Placeholder author
+readme = "README.md"
+license = "Apache-2.0" # Assuming Apache-2.0 as Qwen-3 is, and many components are. Verify if this is appropriate.
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "~3.10"
+torch = "^2.1.0" # Common ML dependency
+transformers = "^4.35.0" # For LLM and embedding models
+neo4j = "^5.16.0" # Official Neo4j driver
+sentence-transformers = "^2.2.2" # For embeddings
+pydantic = "^2.5.0"
+python-dotenv = "^1.0.0" # For .env file loading
+structlog = "^23.2.0" # For structured logging
+fastapi = "^0.104.1" # For potential API, and vLLM uses it
+uvicorn = {extras = ["standard"], version = "^0.24.0"} # ASGI server
+vllm = {version = "^0.2.7", optional = true} # For serving LLMs like Qwen-3, marked optional for easier CPU-only setup if needed
+typer = "^0.9.0" # For CLI in main.py
+spacy = "^3.7.2" # Useful for token counting if needed by ContextManager
+tiktoken = "^0.5.1" # For token counting
+pytest = "^7.4.3" # For testing
+pytest-cov = "^4.1.0" # For test coverage
+numpy = "^1.26.2" # Often a dependency of ML libs
+requests = "^2.31.0" # For vLLM client if it's HTTP based
+aiohttp = "^3.9.1" # For async HTTP if vLLM client needs it
+# graphdatascience might be needed if we use GDS library with Neo4j, for now covered by neo4j driver
+# duckdb = {version = "^0.9.2", optional = true} # For telemetry, marked optional
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
+ruff = "^0.1.7" # Linter
+black = "^23.11.0" # Formatter
+mypy = "^1.7.1" # Type checker
+
+[tool.poetry.extras]
+vllm = ["vllm"]
+# duckdb = ["duckdb"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+select = ["E", "W", "F", "I", "UP", "PL", "T20"]
+ignore = ["E501"] # Let black handle line length formatting for errors
+
+[tool.black]
+line-length = 88
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true # Makes setup easier initially
