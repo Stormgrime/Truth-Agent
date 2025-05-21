@@ -62,6 +62,11 @@ class EmbeddingClient:
             raise RuntimeError(f"Failed to load SentenceTransformer model '{self.model_name}'") from e
 
     def get_embedding(self, text: str) -> List[float]:
+        if settings.TEST_MODE:
+            logger.info("EmbeddingClient is in TEST_MODE. Returning dummy vector.")
+            dim = self.get_embedding_dimensionality() or 384 
+            return [0.01] * dim
+            
         if not text or not isinstance(text, str):
             logger.warning("Received empty or invalid text for embedding, returning empty list.")
             return []

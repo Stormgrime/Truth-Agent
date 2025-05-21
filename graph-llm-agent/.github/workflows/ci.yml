@@ -64,6 +64,7 @@ jobs:
         # Override model names for CI to use tiny, fast-loading models
         LLM_MODEL_NAME: "hf-internal-testing/tiny-random-gpt2"
         EMBEDDING_MODEL_NAME: "hf-internal-testing/tiny-random-bert" 
+        GRAPH_AGENT_TEST_MODE: "true" 
         # Ensure these models are compatible with the clients or that clients mock them effectively in a CI mode
       run: |
         poetry run python -m graph_llm_agent.main smoke --model ${{ env.LLM_MODEL_NAME }}

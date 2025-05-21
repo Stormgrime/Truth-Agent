@@ -16,10 +16,14 @@ class Neo4jAdapter:
         self._uri = uri if uri else settings.NEO4J_URI
         self._user = user if user else settings.NEO4J_USER
         self._password = password if password else settings.NEO4J_PASSWORD
-        self._driver: Optional[Driver] = None
+        self._driver: Optional[Driver] = None # Will be 'True' in TEST_MODE if connection skipped
         self._connect()
 
     def _connect(self):
+        if settings.TEST_MODE:
+            logger.warning("Neo4jAdapter is in TEST_MODE. Skipping actual connection and schema setup.")
+            self._driver = True # Mock driver object to signify "connected" for other methods' checks
+            return
         try:
             self._driver = GraphDatabase.driver(self._uri, auth=(self._user, self._password))
             self._driver.verify_connectivity()
@@ -34,7 +38,10 @@ class Neo4jAdapter:
             logger.info("Neo4j connection closed.")
 
     def _execute_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Record]:
-        if not self._driver:
+        if self._driver is True and settings.TEST_MODE:
+            logger.info(f"Neo4jAdapter TEST_MODE: Skipping _execute_query. Returning empty list.")
+            return []
+        if not self._driver: # Check for actual driver now
             raise ServiceUnavailable("Neo4j driver not initialized. Cannot execute query.")
         
         parameters = parameters or {}
@@ -47,7 +54,11 @@ class Neo4jAdapter:
             raise
 
     def _execute_write_transaction(self, tx_function, **kwargs) -> Any:
-        if not self._driver:
+        if self._driver is True and settings.TEST_MODE:
+            logger.info(f"Neo4jAdapter TEST_MODE: Skipping _execute_write_transaction. Returning None.")
+            # This assumes the calling function can handle None if it expected a result from tx_function
+            return None 
+        if not self._driver: # Check for actual driver
             raise ServiceUnavailable("Neo4j driver not initialized. Cannot execute transaction.")
         try:
             with self._driver.session() as session:
@@ -57,7 +68,11 @@ class Neo4jAdapter:
             raise
 
     def _execute_read_transaction(self, tx_function, **kwargs) -> Any:
-        if not self._driver:
+        if self._driver is True and settings.TEST_MODE:
+            logger.info(f"Neo4jAdapter TEST_MODE: Skipping _execute_read_transaction. Returning None.")
+            # This assumes the calling function can handle None
+            return None
+        if not self._driver: # Check for actual driver
             raise ServiceUnavailable("Neo4j driver not initialized. Cannot execute transaction.")
         try:
             with self._driver.session() as session:
@@ -139,6 +154,10 @@ class Neo4jAdapter:
             raise
 
     def get_node_by_uuid(self, uuid_val: UUID, node_label: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        if self._driver is True and settings.TEST_MODE:
+            logger.info(f"Neo4jAdapter TEST_MODE: Skipping get_node_by_uuid. Returning None.")
+            return None
+            
         label_match = f":{node_label}" if node_label else ""
         query = f"MATCH (n{label_match} {{uuid: $uuid_str}}) RETURN properties(n) AS props"
         
@@ -151,6 +170,10 @@ class Neo4jAdapter:
     def add_relationship(self, start_node_uuid: UUID, end_node_uuid: UUID,
                          start_node_label: str, end_node_label: str,
                          rel_type: str, properties: Optional[Dict[str, Any]] = None):
+        if self._driver is True and settings.TEST_MODE:
+            logger.info(f"Neo4jAdapter TEST_MODE: Skipping add_relationship. Returning True.")
+            return True
+
         properties = properties or {}
         for k, v in properties.items():
             if isinstance(v, UUID): properties[k] = str(v)
@@ -212,6 +235,7 @@ class Neo4jAdapter:
 
     def mark_superseded_by(self, old_node_uuid: UUID, new_node_uuid: UUID,
                            old_node_label: str, new_node_label: str):
+        # This method internally calls add_relationship, which is already test-mode aware.
         return self.add_relationship(
             start_node_uuid=old_node_uuid, end_node_uuid=new_node_uuid,
             start_node_label=old_node_label, end_node_label=new_node_label,
@@ -228,6 +252,9 @@ class Neo4jAdapter:
         except Exception as e:
             logger.error(f"An unexpected error occurred during vector index creation: {e}")
         logger.info("Schema setup process complete.")
+
+    # Test mode related changes for other methods:
+    # If self._driver is True (mocked in TEST_MODE), methods should return benign defaults.
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

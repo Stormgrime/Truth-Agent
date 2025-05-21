@@ -66,6 +66,10 @@ class LLMClient:
 
 
     def generate_response(self, prompt: str, temperature: float = 0.7, max_tokens: int = 512) -> Tuple[str, float]:
+        if settings.TEST_MODE:
+            logger.info("LLMClient is in TEST_MODE. Returning canned response.")
+            return "This is a canned test mode response from LLMClient.", 0.99
+        
         logger.debug(f"Generating response for prompt (first 100 chars): {prompt[:100]}...")
         
         if self.mode == "hf_pipeline":

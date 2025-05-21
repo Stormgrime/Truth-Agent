@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict, EnvAlias
 from dotenv import load_dotenv
 
 # Load .env file from the project root if it exists
@@ -49,6 +49,9 @@ class Settings(BaseSettings):
 
     # Tokenizer Override (optional)
     OVERRIDE_TOKENIZER: Optional[str] = None # e.g., "p50k_base" or "cl100k_base"
+
+    # Test Mode for CI or specific testing scenarios
+    TEST_MODE: bool = Field(default=False, validation_alias=EnvAlias('GRAPH_AGENT_TEST_MODE'))
 
     # Model config dictionary, compatible with pydantic BaseSettings
     model_config = SettingsConfigDict(
