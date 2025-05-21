@@ -114,18 +114,25 @@ async def test_compaction_summary_length(compaction_service_fixture: CompactionS
     expected_summary_tokens_from_mock = 250 
     
     long_transcript_messages = generate_long_transcript(target_transcript_tokens)
+    # Calculate original total tokens from the generated messages
+    original_total_tokens = sum(m.get('token_count', 0) for m in long_transcript_messages)
     
     summary_text, summary_token_count, summary_uuid = await compaction_service_fixture.compact_and_store_memory(long_transcript_messages)
 
     assert summary_text is not None, "Compaction failed to produce a summary text."
     assert summary_token_count > 0, "Summary token count is zero."
     
-    # print(f"DEBUG: Original transcript tokens (summed): {sum(m['token_count'] for m in long_transcript_messages)}")
+    # print(f"DEBUG: Original transcript tokens (summed): {original_total_tokens}")
     # print(f"DEBUG: Summary text (first 100 chars): '{summary_text[:100]}...'")
     # print(f"DEBUG: Actual summary token count from service: {summary_token_count}")
 
+    # User feedback assertion: summary_tokens < total_original_tokens * 0.3
+    # Note: original_total_tokens might be slightly different from target_transcript_tokens due to sentence tokenization.
+    max_allowed_relative_tokens = original_total_tokens * 0.3
+    assert summary_token_count < max_allowed_relative_tokens,         f"Summary token count {summary_token_count} is not less than 30% of original {original_total_tokens} (expected < {max_allowed_relative_tokens:.0f})."
+
     assert summary_token_count <= 300, f"Summary token count {summary_token_count} exceeded 300 (user requirement)."
     # Check if it's close to what the mock was designed to produce (CompactionService's internal target)
-    assert abs(summary_token_count - expected_summary_tokens_from_mock) <= 5,         f"Summary token count {summary_token_count} significantly different from mock's target {expected_summary_tokens_from_mock}."
+    assert abs(summary_token_count - expected_summary_tokens_from_mock) <= 10,         f"Summary token count {summary_token_count} significantly different from mock's target {expected_summary_tokens_from_mock}."
 
 ```

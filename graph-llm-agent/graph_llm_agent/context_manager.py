@@ -35,12 +35,27 @@ class ContextManager:
         self.current_total_tokens: int = 0
         self.compaction_service = compaction_service if compaction_service else PlaceholderCompactionService()
         
+        if settings.OVERRIDE_TOKENIZER:
+            try:
+                self.tokenizer = tiktoken.get_encoding(settings.OVERRIDE_TOKENIZER)
+                logger.info(f"ContextManager: Using OVERRIDE_TOKENIZER '{settings.OVERRIDE_TOKENIZER}'.")
+            except Exception as e_override:
+                logger.error(f"ContextManager: Failed to load OVERRIDE_TOKENIZER '{settings.OVERRIDE_TOKENIZER}'. Error: {e_override}. Attempting other fallbacks.")
+                # Fallthrough to model-specific or default logic if override fails
+                self._initialize_default_tokenizers() 
+        else:
+            self._initialize_default_tokenizers()
+        
+        # logger.info(f"ContextManager initialized with tokenizer: {self.tokenizer.name}") # Covered by specific logs above
+
+    def _initialize_default_tokenizers(self):
         try:
-            # Try to get encoding for the specific model first
             self.tokenizer = tiktoken.encoding_for_model(settings.LLM_MODEL_NAME)
             logger.info(f"ContextManager: Using tokenizer '{self.tokenizer.name}' based on LLM_MODEL_NAME '{settings.LLM_MODEL_NAME}'.")
         except KeyError:
-            logger.warning(f"ContextManager: No specific tiktoken encoding found for model '{settings.LLM_MODEL_NAME}'. Falling back.")
+            logger.warning(f"ContextManager: No specific tiktoken encoding for model '{settings.LLM_MODEL_NAME}'. Falling back.")
+            # ... (rest of the existing fallback logic for cl100k_base, then p50k_base) ...
+            # Ensure the final RuntimeError is within this method or handled appropriately.
             try:
                 self.tokenizer = tiktoken.get_encoding("cl100k_base")
                 logger.info("ContextManager: Using 'cl100k_base' tokenizer as fallback.")
@@ -52,8 +67,6 @@ class ContextManager:
                 except Exception as e_p50k:
                     logger.error(f"ContextManager: Failed to load any tiktoken encoding: {e_p50k}", exc_info=True)
                     raise RuntimeError("Could not initialize tiktoken tokenizer for ContextManager.") from e_p50k
-        
-        # logger.info(f"ContextManager initialized with tokenizer: {self.tokenizer.name}") # Covered by specific logs above
 
     def _count_tokens(self, text: str) -> int:
         if not text: return 0

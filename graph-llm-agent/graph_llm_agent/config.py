@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Metacognition Settings
     REFLECTION_INTERACTION_INTERVAL: int = 5
 
+    # Tokenizer Override (optional)
+    OVERRIDE_TOKENIZER: Optional[str] = None # e.g., "p50k_base" or "cl100k_base"
+
     # Model config dictionary, compatible with pydantic BaseSettings
     model_config = SettingsConfigDict(
         env_file=str(dotenv_path), # Tell pydantic to load .env if DotEnvSettingsSource is used (though we load manually too)

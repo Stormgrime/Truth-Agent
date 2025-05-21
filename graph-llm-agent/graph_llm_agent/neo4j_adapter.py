@@ -86,6 +86,8 @@ class Neo4jAdapter:
         if not settings.EMBEDDING_DIMENSIONS:
             logger.error("EMBEDDING_DIMENSIONS not set in config. Cannot create vector index.")
             raise ValueError("EMBEDDING_DIMENSIONS must be set to create vector indexes.")
+        
+        logger.info(f"Attempting to create vector indexes using EMBEDDING_DIMENSIONS: {settings.EMBEDDING_DIMENSIONS}")
 
         vector_indexes_map = {
             NodeLabel.EPISODE: f"{NodeLabel.EPISODE.lower()}_vector_index",
@@ -100,6 +102,7 @@ class Neo4jAdapter:
         for node_label, index_name in vector_indexes_map.items():
             if index_name not in existing_vector_index_names:
                 query = f"CALL db.index.vector.createNodeIndex('{index_name}', '{node_label}', 'embedding', {settings.EMBEDDING_DIMENSIONS}, 'cosine')"
+                logger.info(f"Preparing to create/check index '{index_name}' for label '{node_label}' with dimension {settings.EMBEDDING_DIMENSIONS}.")
                 try:
                     self._execute_query(query)
                     logger.info(f"Successfully created vector index: {index_name} for label {node_label}")

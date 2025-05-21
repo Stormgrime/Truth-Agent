@@ -17,11 +17,24 @@ class CompactionService:
         self.neo4j_adapter = neo4j_adapter
         self.embedding_client = embedding_client # Store embedding client
 
+        if settings.OVERRIDE_TOKENIZER:
+            try:
+                self.tokenizer = tiktoken.get_encoding(settings.OVERRIDE_TOKENIZER)
+                logger.info(f"CompactionService: Using OVERRIDE_TOKENIZER '{settings.OVERRIDE_TOKENIZER}'.")
+            except Exception as e_override:
+                logger.error(f"CompactionService: Failed to load OVERRIDE_TOKENIZER '{settings.OVERRIDE_TOKENIZER}'. Error: {e_override}. Attempting other fallbacks.")
+                self._initialize_default_tokenizers() 
+        else:
+            self._initialize_default_tokenizers()
+        
+        # logger.info(f"CompactionService initialized with tokenizer: {self.tokenizer.name}") # Covered by specific logs
+
+    def _initialize_default_tokenizers(self):
         try:
             self.tokenizer = tiktoken.encoding_for_model(settings.LLM_MODEL_NAME)
             logger.info(f"CompactionService: Using tokenizer '{self.tokenizer.name}' based on LLM_MODEL_NAME '{settings.LLM_MODEL_NAME}'.")
         except KeyError:
-            logger.warning(f"CompactionService: No specific tiktoken encoding found for model '{settings.LLM_MODEL_NAME}'. Falling back.")
+            logger.warning(f"CompactionService: No specific tiktoken encoding for model '{settings.LLM_MODEL_NAME}'. Falling back.")
             try:
                 self.tokenizer = tiktoken.get_encoding("cl100k_base")
                 logger.info("CompactionService: Using 'cl100k_base' tokenizer as fallback.")
@@ -33,7 +46,6 @@ class CompactionService:
                 except Exception as e_p50k:
                     logger.error(f"CompactionService: Failed to load any tiktoken encoding: {e_p50k}", exc_info=True)
                     raise RuntimeError("Could not initialize tiktoken tokenizer for CompactionService.") from e_p50k
-        # logger.info(f"CompactionService initialized with tokenizer: {self.tokenizer.name}") # Covered by specific logs
 
     def _count_tokens(self, text: str) -> int:
         if not text: return 0

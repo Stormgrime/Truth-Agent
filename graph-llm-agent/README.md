@@ -60,8 +60,13 @@ This project implements an LLM agent that leverages a graph database (Neo4j) to 
 
 - Python 3.10+
 - Poetry (for dependency management)
-- A running Neo4j instance (Community Edition 4.4 or 5.x recommended for vector index support).
-    - Ensure the Neo4j instance has the APOC and Graph Data Science (GDS) plugins installed if you plan to use advanced graph algorithms or vector indexes via GDS (though native vector indexes in 5.x are preferred). The current `Neo4jAdapter` uses native vector indexes.
+- A running Neo4j instance (Community Edition 5.x recommended for native vector index support).
+    - **Download & Install Neo4j:**
+        - **Option 1 (Recommended for local development):** Download Neo4j Desktop from [https://neo4j.com/download/](https://neo4j.com/download/). It provides an easy way to manage local Neo4j server instances.
+        - **Option 2 (Manual Server Install):** Download the Neo4j Community Server from the Neo4j website and follow their installation instructions for your operating system.
+    - Ensure your Neo4j instance is running before starting the agent.
+    - The `Neo4jAdapter` in this project uses native vector indexes available in Neo4j 5.x. For vector indexes to work, ensure your Neo4j version is compatible (typically 5.4+ for `db.index.vector.queryNodes`).
+    - While not strictly required for the agent's core vector search, having the APOC plugin can be useful for other graph operations if you extend the agent.
 
 ### Installation & Setup
 
