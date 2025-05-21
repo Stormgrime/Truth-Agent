@@ -9,6 +9,7 @@ from rich.prompt import Prompt
 from rich.text import Text
 from rich.panel import Panel
 
+from graph_llm_agent import __version__ # Import the version
 from graph_llm_agent.config import settings
 from graph_llm_agent.embedding_client import EmbeddingClient
 from graph_llm_agent.llm_client import LLMClient
@@ -25,6 +26,29 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer(add_completion=False, pretty_exceptions_show_locals=False, no_args_is_help=True)
 console = Console()
+
+# Version callback
+def version_callback(value: bool):
+    if value:
+        console.print(f"Graph-LLM Agent Version: {__version__}")
+        raise typer.Exit()
+
+@app.callback(invoke_without_command=True) # invoke_without_command allows --version without a command
+def main_callback(
+    ctx: typer.Context, # Added ctx here
+    version: Optional[bool] = typer.Option(None, "--version", "-v", callback=version_callback, is_eager=True, help="Show application version and exit.")
+):
+    """
+    Graph-LLM Agent: An LLM with persistent, graph-based memory.
+    """
+    # This callback is invoked even if a subcommand is used.
+    # ctx.invoked_subcommand is None if no subcommand is passed (e.g. just --version)
+    if ctx.invoked_subcommand is None and not version: # if no command and not asking for version, show help
+        # console.print("[bold yellow]No command specified. Displaying help.[/bold yellow]")
+        # Typer automatically shows help if no_args_is_help=True and no command given.
+        # but if we have a callback, we might need to be more explicit or rely on Typer's default.
+        # If only --version is passed, version_callback handles it and exits.
+        pass
 
 neo4j_adapter: Optional[Neo4jAdapter] = None
 embedding_client: Optional[EmbeddingClient] = None
